@@ -1188,7 +1188,7 @@ value effective_del conf base warning p = do {
    notes = empty; psources = empty; key_index = ip}
 };
 
-value print_mod_ok conf base wl p =
+value print_mod_ok conf base wl pgl p =
   let title _ =
     Wserver.printf "%s" (capitale (transl conf "person modified"))
   in
@@ -1231,6 +1231,7 @@ value print_mod_ok conf base wl p =
       (referenced_person_text conf base (poi base p.key_index));
     Wserver.printf "\n";
     Update.print_warnings conf base wl;
+    Notes.print_linked_list conf base pgl;
     trailer conf;
   }
 ;
@@ -1446,7 +1447,18 @@ value print_mod o_conf base =
           base
           (gen_person_of_person (poi base (Adef.iper_of_int (-1)))) ]
   in
+  let key =
+    (Name.lower o_p.first_name, Name.lower o_p.surname, o_p.occ)
+  in
   let conf = Update.update_conf o_conf in
+  let pgl =
+    let bdir = Util.base_path [] (conf.bname ^ ".gwb") in
+    let fname = Filename.concat bdir "notes_links" in
+    let db = NotesLinks.read_db_from_file fname in
+    let db = Notes.merge_possible_aliases conf db in
+    let pgl = Perso.links_to_ind conf base db key in
+    pgl
+  in
   let callback sp = do {
     let p = effective_mod conf base sp in
     let op = poi base p.key_index in
@@ -1487,7 +1499,7 @@ value print_mod o_conf base =
     then
       Update.delete_topological_sort_v conf base
     else ();
-    print_mod_ok conf base wl p;
+    print_mod_ok conf base wl pgl p;
   }
   in
   print_mod_aux conf base callback
